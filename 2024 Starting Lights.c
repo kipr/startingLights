@@ -152,11 +152,11 @@ void checklist()
 {
     printf("Checklist for starting lights:\n");
     printf("- Lights plugged into any motor port.\n");
-    printf("- Dropper servo plugged into servo port 0.\n");
-    printf("- Light switch plugged into digital port 0.\n");
+    printf("- Dropper servos plugged into servo port 1 and 3.\n");
+    printf("- Light switch plugged into digital port 2 and 6.\n");
     printf("- Dropper light switch off.\n");
-    printf("- Flag servo plugged into servo port 3.\n");
-    printf("- Flag station touch sensor plugged into digital port 1.\n");
+    printf("- Flag servo plugged into servo port 0 and 2.\n");
+    printf("- Flag station touch sensor plugged into digital port 0 and 4.\n");
     msleep(2000);
     printf("Press grey push button to proceed.\n");
     while (push_button() == 0)
@@ -232,22 +232,22 @@ void run()
             }
             if (digital(2) == 1)
             {
-                set_servo_position(0, SERVO_DROPPER_OPEN);
-            }
-            if (digital(3) == 1)
-            {
                 set_servo_position(1, SERVO_DROPPER_OPEN);
+            }
+            if (digital(6) == 1)
+            {
+                set_servo_position(3, SERVO_DROPPER_OPEN);
             }
             // Check if flag buttons are pressed
             if (digital(0) == 1)
             {
-                set_servo_position(2, SERVO_FLAG_UP);
+                set_servo_position(0, SERVO_FLAG_UP);
                 printf("Flag sensor in port 0 pressed\n");
             }
-            if (digital(1) == 1)
+            if (digital(4) == 1)
             {
-                set_servo_position(3, SERVO_FLAG_UP);
-                printf("Flag sensor in port 1 pressed\n");
+                set_servo_position(2, SERVO_FLAG_UP);
+                printf("Flag sensor in port 4 pressed\n");
             }
 
             // Show time left
