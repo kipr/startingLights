@@ -10,9 +10,10 @@
 #define P5 670, 150, 770, 200
 #define SERVO_STOPPER_POSITION 2000
 #define SERVO_DROPPER_CLOSED 2000
-#define SERVO_DROPPER_OPEN 100
+#define SERVO_DROPPER_OPEN 600
 #define SERVO_FLAG_DOWN 2000
-#define SERVO_FLAG_UP 1000
+#define SERVO_FLAG_UP 920
+#define RUN_TIME 120
 
 void set_all_servos();
 void motors_on();
@@ -152,11 +153,11 @@ void checklist()
 {
     printf("Checklist for starting lights:\n");
     printf("- Lights plugged into any motor port.\n");
-    printf("- Dropper servos plugged into servo port 1 and 3.\n");
-    printf("- Light switch plugged into digital port 2 and 6.\n");
+    printf("- Dropper servos plugged into servo port 0 and 2.\n");
+    printf("- Light switch plugged into digital port 0 and 4.\n");
     printf("- Dropper light switch off.\n");
-    printf("- Flag servo plugged into servo port 0 and 2.\n");
-    printf("- Flag station touch sensor plugged into digital port 0 and 4.\n");
+    printf("- Flag servo plugged into servo port 1 and 3.\n");
+    printf("- Flag station touch sensor plugged into digital port 2 and 6.\n");
     msleep(2000);
     printf("Press grey push button to proceed.\n");
     while (push_button() == 0)
@@ -173,7 +174,7 @@ void run()
     // int time5 = 0;
     char sec[3];
     int time;
-    int decimal;
+    double decimal;
     while (c_button() == 0)
     {
         printf("Press button to set servos\n");
@@ -183,7 +184,7 @@ void run()
                 return;
             msleep(10);
         }
-        set_all_servos(SERVO_STOPPER_POSITION);
+        set_all_servos();
         msleep(1000);
         printf("Servos set . . .\n");
         msleep(1000);
@@ -207,7 +208,7 @@ void run()
         // Start
         start_time = seconds();
         // printf("Start time: %lf\n", start_time);
-        end_time = start_time + 120;
+        end_time = start_time + RUN_TIME;
         curr_time = start_time;
         motors_on();
         graphics_clear();
@@ -226,27 +227,27 @@ void run()
                 return;
             }
             countdown = end_time - curr_time;
-            if (countdown < 115 && countdown > 5)
+            if (countdown < RUN_TIME-5 && countdown > 5)
             {
                 ao();
             }
-            if (digital(2) == 1)
-            {
-                set_servo_position(1, SERVO_DROPPER_OPEN);
-            }
-            if (digital(6) == 1)
-            {
-                set_servo_position(3, SERVO_DROPPER_OPEN);
-            }
-            // Check if flag buttons are pressed
             if (digital(0) == 1)
             {
-                set_servo_position(0, SERVO_FLAG_UP);
-                printf("Flag sensor in port 0 pressed\n");
+                set_servo_position(0, SERVO_DROPPER_OPEN);
             }
             if (digital(4) == 1)
             {
-                set_servo_position(2, SERVO_FLAG_UP);
+                set_servo_position(2, SERVO_DROPPER_OPEN);
+            }
+            // Check if flag buttons are pressed
+            if (digital(2) == 1)
+            {
+                set_servo_position(1, SERVO_FLAG_UP);
+                printf("Flag sensor in port 0 pressed\n");
+            }
+            if (digital(6) == 1)
+            {
+                set_servo_position(3, SERVO_FLAG_UP);
                 printf("Flag sensor in port 4 pressed\n");
             }
 
@@ -261,9 +262,12 @@ void run()
                 graphics_print_string(sec, 340, 150, 255, 255, 255, 6);
                 graphics_print_string("Press button to Stop", 50, 250, 255, 255, 255, 5);
                 graphics_update();
-                if (countdown <= 5)
+            }
+            
+            if (countdown <= 5)
                 {
-                    decimal = countdown - time;
+                    decimal = countdown - (double)time;
+                    printf("decimal = %lf", decimal);
                     if (decimal > 0.5)
                     {
                         motors_on();
@@ -273,7 +277,6 @@ void run()
                         ao();
                     }
                 }
-            }
             curr_time = seconds();
             msleep(10);
         }
