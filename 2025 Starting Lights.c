@@ -128,17 +128,29 @@ void rand_color()
     int order[3];
     switch(rand_num) {
         case 0:
-            order = [0, 1, 2];
+            order[0] = 0;
+            order[1] = 1;
+            order[2] = 2;
         case 1:
-            order = [0, 2, 1];
+            order[0] = 0;
+            order[1] = 2;
+            order[2] = 1;
         case 2:
-            order = [1, 0, 2];
+            order[0] = 1;
+            order[1] = 0;
+            order[2] = 2;
         case 3:
-            order = [1, 2, 0];
+            order[0] = 1;
+            order[1] = 2;
+            order[2] = 0;
         case 4:
-            order = [2, 0, 1];
+            order[0] = 2;
+            order[1] = 0;
+            order[2] = 1;
         case 5:
-            order = [2, 1, 0];
+            order[0] = 2;
+            order[1] = 1;
+            order[2] = 0;
     }
     // Left
     switch(order[0]) {
