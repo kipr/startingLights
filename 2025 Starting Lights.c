@@ -8,6 +8,9 @@
 #define P3 350, 150, 450, 200
 #define P4 510, 150, 610, 200
 #define P5 670, 150, 770, 200
+#define PINK 252, 15, 192
+#define GREEN 0, 255, 0
+#define BLUE 0, 183, 235
 #define SERVO_STOPPER_POSITION 2000
 #define SERVO_DROPPER_CLOSED 2000
 #define SERVO_DROPPER_OPEN 600
@@ -26,7 +29,7 @@ int sensor_avg(int readings[]);
 int calibrate_sensor(int readings[], int port);
 bool sensor_triggered(int avg, int calibrated, int port);
 void flash(int number);
-int rand_color();
+void rand_color();
 void count5();
 void select_button();
 int run_button();
@@ -118,19 +121,53 @@ void flash(int number)
     }
 }
 
-int rand_color()
+void rand_color()
 {
     srand(seconds());
-    int rand_num = rand() % 3;
-    int i;
-    printf("Proof that numbers are random: ");
-    for (i = 0; i < 10; i++)
-    {
-        rand_num = rand() % 2;
-        printf("%d ", rand_num);
+    int rand_num = rand() % 6;
+    int order[3];
+    switch(rand_num) {
+        case 0:
+            order = [0, 1, 2];
+        case 1:
+            order = [0, 2, 1];
+        case 2:
+            order = [1, 0, 2];
+        case 3:
+            order = [1, 2, 0];
+        case 4:
+            order = [2, 0, 1];
+        case 5:
+            order = [2, 1, 0];
+    }
+    // Left
+    switch(order[0]) {
+        case 0:
+            graphics_rectangle(P2,PINK);
+        case 1:
+            graphics_rectangle(P2,GREEN);
+        case 2:
+            graphics_rectangle(P2,BLUE);
+    }
+    // Middle
+    switch(order[1]) {
+        case 0:
+            graphics_rectangle(P3,PINK);
+        case 1:
+            graphics_rectangle(P3,GREEN);
+        case 2:
+            graphics_rectangle(P3,BLUE);
+    }
+    // Right
+    switch(order[2]) {
+        case 0:
+            graphics_rectangle(P4,PINK);
+        case 1:
+            graphics_rectangle(P4,GREEN);
+        case 2:
+            graphics_rectangle(P4,BLUE);
     }
     printf("\n");
-    return rand_num;
 }
 
 void count5()
@@ -239,6 +276,27 @@ void run()
         msleep(1000);
         printf("Servos set . . .\n");
         msleep(1000);
+        checklist();
+
+        // Press grey button to randomize cups
+        printf("Press grey push button to randomize cups\n");
+        while (push_button() == 0)
+        {
+            if (c_button())
+                return;
+            msleep(10);
+        }
+        graphics_open(800, 350);
+        msleep(500);
+        rand_color();
+        while (push_button() == 0)
+        {
+            if (c_button())
+                return;
+            msleep(10);
+        }
+        graphics_close();
+
         printf("Calibrating rangefinder sensors . . .\n");
         rangefinder_A_calibration = calibrate_sensor(rangefinderA, SENSOR_A_PORT);
         rangefinder_B_calibration = calibrate_sensor(rangefinderB, SENSOR_B_PORT);
@@ -249,7 +307,7 @@ void run()
         triggered_A = false;
         triggered_B = false;
         printf("Sensors calibrated . . .\n");
-        checklist();
+        
         // Wait to start
         printf("Press grey push button to Start\n");
         printf("Press c button to stop program\n");
