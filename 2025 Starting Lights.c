@@ -16,8 +16,10 @@
 #define SERVO_DROPPER_OPEN 600
 #define RUN_TIME 120
 #define SENSOR_CHECK_COUNT 10
-#define SERVO_A_PORT 0
-#define SERVO_B_PORT 3
+#define SERVO_A_PORT1 0
+#define SERVO_A_PORT2 1
+#define SERVO_B_PORT1 2
+#define SERVO_B_PORT2 3
 #define SENSOR_A_PORT 0
 #define SENSOR_B_PORT 5
 #define SENSOR_TRIGGER_MARGIN 100
@@ -50,8 +52,10 @@ int main()
 // Sets any plugged in servos
 void set_all_servos()
 {
-    set_servo_position(SERVO_A_PORT, SERVO_DROPPER_CLOSED);
-    set_servo_position(SERVO_B_PORT, SERVO_DROPPER_CLOSED);
+    set_servo_position(SERVO_A_PORT1, SERVO_DROPPER_CLOSED);
+    set_servo_position(SERVO_A_PORT2, SERVO_DROPPER_CLOSED);
+    set_servo_position(SERVO_B_PORT1, SERVO_DROPPER_CLOSED);
+    set_servo_position(SERVO_B_PORT2, SERVO_DROPPER_CLOSED);
 }
 
 // Turns on any plugged in lights
@@ -254,7 +258,7 @@ void checklist()
 {
     printf("Checklist for starting lights:\n");
     printf("- Lights plugged into any motor port.\n");
-    printf("- Dropper servos plugged into servo port %d and %d.\n", SERVO_A_PORT, SERVO_B_PORT);
+    printf("- Dropper servos plugged into servo port %d/%d and %d/%d.\n", SERVO_A_PORT1, SERVO_A_PORT2, SERVO_B_PORT1, SERVO_B_PORT2);
     printf("- Rangefinders plugged into analog ports %d and %d.\n", SENSOR_A_PORT, SENSOR_B_PORT);
     msleep(2000);
     printf("Press grey push button to proceed.\n");
@@ -365,7 +369,8 @@ void run()
                 read_sensor(rangefinderA, SENSOR_A_PORT);
                 if (sensor_triggered(sensor_avg(rangefinderA), rangefinder_A_calibration, SENSOR_A_PORT))
                 {
-                    set_servo_position(SERVO_A_PORT, SERVO_DROPPER_OPEN);
+                    set_servo_position(SERVO_A_PORT1, SERVO_DROPPER_OPEN);
+                    set_servo_position(SERVO_A_PORT2, SERVO_DROPPER_OPEN);
                     triggered_A = true;
                 }
             }
@@ -373,7 +378,8 @@ void run()
                 read_sensor(rangefinderB, SENSOR_B_PORT);
                 if (sensor_triggered(sensor_avg(rangefinderB), rangefinder_B_calibration, SENSOR_B_PORT))
                 {
-                    set_servo_position(SERVO_B_PORT, SERVO_DROPPER_OPEN);
+                    set_servo_position(SERVO_B_PORT1, SERVO_DROPPER_OPEN);
+                    set_servo_position(SERVO_B_PORT2, SERVO_DROPPER_OPEN);
                     triggered_B = true;
                 }
             }
