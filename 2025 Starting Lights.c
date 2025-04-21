@@ -131,55 +131,70 @@ void rand_color()
             order[0] = 0;
             order[1] = 1;
             order[2] = 2;
+            break;
         case 1:
             order[0] = 0;
             order[1] = 2;
             order[2] = 1;
+            break;
         case 2:
             order[0] = 1;
             order[1] = 0;
             order[2] = 2;
+            break;
         case 3:
             order[0] = 1;
             order[1] = 2;
             order[2] = 0;
+            break;
         case 4:
             order[0] = 2;
             order[1] = 0;
             order[2] = 1;
+            break;
         case 5:
             order[0] = 2;
             order[1] = 1;
             order[2] = 0;
+            break;
     }
     // Left
     switch(order[0]) {
         case 0:
-            graphics_rectangle(P2,PINK);
+            printf("PINK ");
+            break;
         case 1:
-            graphics_rectangle(P2,GREEN);
+            printf("GREEN ");
+            break;
         case 2:
-            graphics_rectangle(P2,BLUE);
+            printf("BLUE ");
+            break;
     }
     // Middle
     switch(order[1]) {
         case 0:
-            graphics_rectangle(P3,PINK);
+            printf("PINK ");
+            break;
         case 1:
-            graphics_rectangle(P3,GREEN);
+            printf("GREEN ");
+            break;
         case 2:
-            graphics_rectangle(P3,BLUE);
+            printf("BLUE ");
+            break;
     }
     // Right
     switch(order[2]) {
         case 0:
-            graphics_rectangle(P4,PINK);
+            printf("PINK");
+            break;
         case 1:
-            graphics_rectangle(P4,GREEN);
+            printf("GREEN");
+            break;
         case 2:
-            graphics_rectangle(P4,BLUE);
+            printf("BLUE");
+            break;
     }
-    printf("\n");
+    printf("\n\n");
 }
 
 void count5()
@@ -285,29 +300,29 @@ void run()
             msleep(10);
         }
         set_all_servos();
-        msleep(1000);
+        msleep(500);
         printf("Servos set . . .\n");
-        msleep(1000);
+        msleep(500);
         checklist();
 
         // Press grey button to randomize cups
-        printf("Press grey push button to randomize cups\n");
+        printf("Once teams are calibrated, press grey push button to randomize cups\n");
         while (push_button() == 0)
         {
             if (c_button())
                 return;
             msleep(10);
         }
-        graphics_open(800, 350);
-        msleep(500);
+        msleep(1000);
         rand_color();
+        printf("Press grey push button to proceed\n");
         while (push_button() == 0)
         {
             if (c_button())
                 return;
             msleep(10);
         }
-        graphics_close();
+        msleep(1000);
 
         printf("Calibrating rangefinder sensors . . .\n");
         rangefinder_A_calibration = calibrate_sensor(rangefinderA, SENSOR_A_PORT);
