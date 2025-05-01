@@ -20,6 +20,9 @@
 #define SERVO_B_PORT 3
 #define SENSOR_A_PORT 0
 #define SENSOR_B_PORT 5
+#define IGNORE_SENSOR 1
+#define BUTTON_A_PORT 0
+#define BUTTON_B_PORT 9
 #define SENSOR_TRIGGER_MARGIN 100
 
 void set_all_servos();
@@ -27,7 +30,7 @@ void motors_on();
 void read_sensor(int readings[], int port);
 int sensor_avg(int readings[]);
 int calibrate_sensor(int readings[], int port);
-bool sensor_triggered(int avg, int calibrated, int port);
+bool sensor_triggered(int avg, int calibrated, int port, int button);
 void flash(int number);
 void rand_color();
 void count5();
@@ -87,7 +90,10 @@ int calibrate_sensor(int readings[], int port) {
         msleep(50);
     }
     avg = sensor_avg(readings);
-    if(avg < 0 || avg > 4095) {
+    if(IGNORE_SENSOR) {
+        printf("IGNORE SENSOR, ONLY BUTTON\n");
+        return 1;
+    } else if(avg < 0 || avg > 4095) {
         printf("Issue with sensor reading on port %d. Received value of %d.\nFix sensors and restart program.\nPrinting readings from sensor:\n[", port, avg);
         for(i = 0; i < SENSOR_CHECK_COUNT - 1; i++) {
             printf("%d, ", readings[i]);
@@ -101,12 +107,16 @@ int calibrate_sensor(int readings[], int port) {
     }
 }
 
-bool sensor_triggered(int avg, int calibrated, int port) {
+bool sensor_triggered(int avg, int calibrated, int port, int button) {
     bool trigger = ((calibrated + SENSOR_TRIGGER_MARGIN) < avg) || ((calibrated - SENSOR_TRIGGER_MARGIN) > avg);
-    if(trigger) {
+    if(!IGNORE_SENSOR && trigger) {
         printf("Sensor in port %d triggered with value %d and calibrated at %d\n", port, avg, calibrated);
     }
-    return trigger;
+    bool button_trigger = digital(button);
+    if(button_trigger) {
+        printf("Backup button in port %d pressed\n", button);
+    }
+    return (!IGNORE_SENSOR && trigger) || button_trigger;
 }
 
 void flash(int number)
@@ -271,6 +281,7 @@ void checklist()
     printf("- Lights plugged into any motor port.\n");
     printf("- Dropper servos plugged into servo port %d and %d.\n", SERVO_A_PORT, SERVO_B_PORT);
     printf("- Rangefinders plugged into analog ports %d and %d.\n", SENSOR_A_PORT, SENSOR_B_PORT);
+    printf("- Backup buttons plugged into digital ports %d and %d.\n", BUTTON_A_PORT, BUTTON_B_PORT);
     msleep(2000);
     printf("Press grey push button to proceed.\n");
     while (push_button() == 0)
@@ -378,7 +389,7 @@ void run()
             }
             if(!triggered_A) {
                 read_sensor(rangefinderA, SENSOR_A_PORT);
-                if (sensor_triggered(sensor_avg(rangefinderA), rangefinder_A_calibration, SENSOR_A_PORT))
+                if (sensor_triggered(sensor_avg(rangefinderA), rangefinder_A_calibration, SENSOR_A_PORT, BUTTON_A_PORT))
                 {
                     set_servo_position(SERVO_A_PORT, SERVO_DROPPER_OPEN);
                     triggered_A = true;
@@ -386,7 +397,7 @@ void run()
             }
             if(!triggered_B) {
                 read_sensor(rangefinderB, SENSOR_B_PORT);
-                if (sensor_triggered(sensor_avg(rangefinderB), rangefinder_B_calibration, SENSOR_B_PORT))
+                if (sensor_triggered(sensor_avg(rangefinderB), rangefinder_B_calibration, SENSOR_B_PORT, BUTTON_B_PORT))
                 {
                     set_servo_position(SERVO_B_PORT, SERVO_DROPPER_OPEN);
                     triggered_B = true;
