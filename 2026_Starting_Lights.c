@@ -6,32 +6,58 @@
 #include <signal.h>
 
 const int RUN_TIME = 120;
-const int SERVO_A_PORT = 0;
-const int SERVO_B_PORT = 3;
+
 const int DROP = 1870;
 const int CATCH = 1150;
-const int GAP = 1000;
 
-void set_all_servos(int pos);
-void motors_on();
-void flash(int number);
-void rand_color();
-void *dropper();
-void drop();
-void count5();
-void wait_b();
-void checklist();
-void run();
+const double DROP_GAP = 1.000;
+const double FIRST_DROP_AT = 9.500;
+const double DROP_PERIOD = 7.000;
+const int DROP_COUNT = 8;
 
-int main()
+const double UI_LOOP_PERIOD = 0.005;
+
+volatile sig_atomic_t dropper_should_stop = 0;
+
+double now(void)
 {
-	printf("Starting tournament UI . . .\n");
-	enable_servos();
-	run();
-	return 0;
+	return seconds();
 }
 
-// Sets any plugged in servos
+void sleep_until(double target_time)
+{
+	while (now() < target_time)
+	{
+		double remaining = target_time - now();
+
+		if (remaining > 0.020)
+		{
+			msleep(10);
+		}
+		else
+		{
+			msleep(1);
+		}
+	}
+}
+
+void sleep_until_or_stop(double target_time)
+{
+	while (!dropper_should_stop && now() < target_time)
+	{
+		double remaining = target_time - now();
+
+		if (remaining > 0.020)
+		{
+			msleep(10);
+		}
+		else
+		{
+			msleep(1);
+		}
+	}
+}
+
 void set_all_servos(int pos)
 {
 	set_servo_position(0, pos);
@@ -40,8 +66,7 @@ void set_all_servos(int pos)
 	set_servo_position(3, pos);
 }
 
-// Turns on any plugged in lights
-void motors_on()
+void motors_on(void)
 {
 	motor(0, 100);
 	motor(1, 100);
@@ -49,254 +74,315 @@ void motors_on()
 	motor(3, 100);
 }
 
-void flash(int number)
+void motors_off(void)
 {
-	int x = 0;
-	for (x = 0; x < number; x++)
+	ao();
+}
+
+void shuffle_ints(int *array, int length)
+{
+	for (int i = length - 1; i > 0; i--)
 	{
-		motors_on();
-		msleep(500);
-		ao();
-		msleep(500);
+		int j = rand() % (i + 1);
+
+		int temp = array[i];
+		array[i] = array[j];
+		array[j] = temp;
 	}
 }
 
-void rand_color()
+const char *color_name(int color)
 {
-	srand(seconds());
+	switch (color)
+	{
+		case 0: return "RED";
+		case 1: return "GREEN";
+		case 2: return "YELLOW";
+		default: return "UNKNOWN";
+	}
+}
+
+void rand_color(void)
+{
+	static bool seeded = false;
+
+	if (!seeded)
+	{
+		srand((unsigned int)(seconds() * 1000000.0));
+		seeded = true;
+	}
 
 	printf("Upper large crate: ");
-	if (rand() % 2) printf("RED\n");
-	else printf("GREEN\n");
 
-	printf("Small crate stack order: ");
-	int rand_num = rand() % 6;
-	int order[3];
-	switch(rand_num) {
-		case 0:
-			order[0] = 0;
-			order[1] = 1;
-			order[2] = 2;
-			break;
-		case 1:
-			order[0] = 0;
-			order[1] = 2;
-			order[2] = 1;
-			break;
-		case 2:
-			order[0] = 1;
-			order[1] = 0;
-			order[2] = 2;
-			break;
-		case 3:
-			order[0] = 1;
-			order[1] = 2;
-			order[2] = 0;
-			break;
-		case 4:
-			order[0] = 2;
-			order[1] = 0;
-			order[2] = 1;
-			break;
-		case 5:
-			order[0] = 2;
-			order[1] = 1;
-			order[2] = 0;
-			break;
-	}
-	// Bottom
-	switch(order[0]) {
-		case 0:
-			printf("RED ");
-			break;
-		case 1:
-			printf("GREEN ");
-			break;
-		case 2:
-			printf("YELLOW ");
-			break;
-	}
-	// Middle
-	switch(order[1]) {
-		case 0:
-			printf("RED ");
-			break;
-		case 1:
-			printf("GREEN ");
-			break;
-		case 2:
-			printf("YELLOW ");
-			break;
-	}
-	// Top
-	switch(order[2]) {
-		case 0:
-			printf("RED");
-			break;
-		case 1:
-			printf("GREEN");
-			break;
-		case 2:
-			printf("YELLOW");
-			break;
-	}
-	printf("\n\n");
-}
-
-void *dropper() {
-	pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
-	msleep(9500);
-	drop();
-	for (int i = 0; i < 7; i++)
+	if (rand() % 2)
 	{
-		msleep(7000 - GAP * 2);
-		drop();
+		printf("RED\n");
 	}
-	return 0;
+	else
+	{
+		printf("GREEN\n");
+	}
+
+	int order[3] = {0, 1, 2};
+	shuffle_ints(order, 3);
+
+	printf("Small crate stack order: %s %s %s\n\n",
+		color_name(order[0]),
+		color_name(order[1]),
+		color_name(order[2])
+	);
 }
 
-void drop()
+void draw_centered_number(const char *text)
 {
+	graphics_clear();
+	graphics_print_string(text, 378, 150, 255, 255, 255, 6);
+	graphics_update();
+}
+
+void draw_timer(int seconds_left)
+{
+	char sec[8];
+
+	sprintf(sec, "%d", seconds_left);
+
+	graphics_clear();
+	graphics_print_string("Timer", 296, 50, 255, 255, 255, 6);
+	graphics_print_string(sec, 340, 150, 255, 255, 255, 6);
+	graphics_print_string("Press B button to Stop", 25, 250, 255, 255, 255, 5);
+	graphics_update();
+}
+
+void count5(void)
+{
+	double start_time = now();
+
+	for (int i = 5; i >= 1; i--)
+	{
+		char text[8];
+
+		sprintf(text, "%d", i);
+		draw_centered_number(text);
+
+		sleep_until(start_time + (6 - i));
+	}
+
+	graphics_clear();
+	graphics_update();
+
+	sleep_until(start_time + 5.0);
+}
+
+void drop_at(double target_time)
+{
+	sleep_until_or_stop(target_time);
+
+	if (dropper_should_stop)
+	{
+		set_all_servos(CATCH);
+		return;
+	}
+
 	set_all_servos(DROP);
-	msleep(GAP);
+
+	sleep_until_or_stop(target_time + DROP_GAP);
+
 	set_all_servos(CATCH);
-	msleep(GAP);
+
+	sleep_until_or_stop(target_time + 2.0 * DROP_GAP);
 }
 
-void count5()
+void *dropper(void *arg)
 {
-	graphics_print_string("5", 378, 150, 255, 255, 255, 6);
-	graphics_update();
-	msleep(1000);
-	graphics_clear();
-	graphics_print_string("4", 378, 150, 255, 255, 255, 6);
-	graphics_update();
-	msleep(1000);
-	graphics_clear();
-	graphics_print_string("3", 378, 150, 255, 255, 255, 6);
-	graphics_update();
-	msleep(1000);
-	graphics_clear();
-	graphics_print_string("2", 378, 150, 255, 255, 255, 6);
-	graphics_update();
-	msleep(1000);
-	graphics_clear();
-	graphics_print_string("1", 378, 150, 255, 255, 255, 6);
-	graphics_update();
-	msleep(1000);
-	graphics_clear();
+	double match_start_time = *(double *)arg;
+
+	for (int i = 0; i < DROP_COUNT; i++)
+	{
+		double drop_start_time = match_start_time + FIRST_DROP_AT + i * DROP_PERIOD;
+
+		drop_at(drop_start_time);
+
+		if (dropper_should_stop)
+		{
+			break;
+		}
+	}
+
+	set_all_servos(CATCH);
+
+	return NULL;
 }
 
-void wait_b() {
+void wait_b(void)
+{
 	while (!b_button())
 	{
-		if (c_button()) exit(EXIT_SUCCESS);
+		if (c_button())
+		{
+			exit(EXIT_SUCCESS);
+		}
+
+		sleep_until(now() + 0.010);
 	}
-	while(b_button());
+
+	while (b_button())
+	{
+		sleep_until(now() + 0.010);
+	}
 }
 
-void checklist()
+void checklist(void)
 {
 	printf("Checklist for starting lights:\n");
 	printf("- Lights plugged into any motor port.\n");
-	printf("- Dropper servos plugged any servo ports.\n");
+	printf("- Dropper servos plugged into any servo ports.\n");
 }
 
-// Run program on loop
-void run()
+void run(void)
 {
-	double start_time, end_time, curr_time, countdown, prev_time;
-	// int time115 = 0;
-	// int time5 = 0;
-	char sec[3];
-	int time;
-	double decimal;
 	pthread_t dropper_thread;
-	while (c_button() == 0)
+
+	while (!c_button())
 	{
 		printf("Press B button to set servos\n");
 		wait_b();
+
 		set_all_servos(CATCH);
+
 		printf("Servos set . . .\n");
 		printf("Press B button to proceed\n");
 		wait_b();
+
 		console_clear();
 
 		checklist();
+
 		printf("Press B button to proceed\n");
 		wait_b();
 
-		// Press grey button to randomize crates
 		printf("After teams are calibrated, press B button to get random items\n\n");
 		wait_b();
+
 		rand_color();
 
-		// Wait to start
 		printf("Press B button to Start\n");
 		printf("Press C button to stop program\n");
 		wait_b();
 
-		// Countdown
 		graphics_open(800, 325);
-		msleep(500);
+
 		count5();
 
-		// Start
-		start_time = seconds();
-		// printf("Start time: %lf\n", start_time);
-		end_time = start_time + RUN_TIME;
-		curr_time = start_time;
+		double start_time = now();
+		double end_time = start_time + RUN_TIME;
+
+		double next_display_update = start_time;
+		double next_loop_tick = start_time;
+
+		dropper_should_stop = 0;
+
 		motors_on();
-		pthread_create(&dropper_thread, NULL, dropper, NULL);
-		graphics_clear();
-		graphics_print_string("Timer", 296, 50, 255, 255, 255, 6);
-		graphics_print_string("119", 340, 150, 255, 255, 255, 6);
+
+		pthread_create(&dropper_thread, NULL, dropper, &start_time);
+
 		printf("Press B button to Stop\n");
-		graphics_update();
-		while (curr_time < end_time)
+
+		while (now() < end_time)
 		{
-			if (b_button()) break;
-			if (c_button()) return;
-			countdown = end_time - curr_time;
-			if (countdown < RUN_TIME-5 && countdown > 5) ao();
+			double current_time = now();
+			double remaining = end_time - current_time;
 
-			// Show time left
-			time = (int)countdown;
-			if (curr_time - prev_time > 1)
+			if (b_button())
 			{
-				prev_time = curr_time;
-				sprintf(sec, "%d", time);
-				graphics_clear();
-				graphics_print_string("Timer", 296, 50, 255, 255, 255, 6);
-				graphics_print_string(sec, 340, 150, 255, 255, 255, 6);
-				graphics_print_string("Press B button to Stop", 25, 250, 255, 255, 255, 5);
-				graphics_update();
+				break;
 			}
 
-			if (countdown <= 5)
+			if (c_button())
 			{
-				decimal = countdown - (double)time;
-				printf("decimal = %lf", decimal);
-				if (decimal > 0.5) motors_on();
-				else ao();
+				break;
 			}
-			curr_time = seconds();
-			msleep(10);
+
+			if (current_time < start_time + 5.0)
+			{
+				motors_on();
+			}
+			else if (remaining > 5.0)
+			{
+				motors_off();
+			}
+			else
+			{
+				int phase = (int)((current_time - (end_time - 5.0)) * 2.0);
+
+				if (phase % 2 == 0)
+				{
+					motors_on();
+				}
+				else
+				{
+					motors_off();
+				}
+			}
+
+			if (current_time >= next_display_update)
+			{
+				int seconds_left = (int)(remaining + 0.999);
+
+				if (seconds_left < 0)
+				{
+					seconds_left = 0;
+				}
+
+				draw_timer(seconds_left);
+
+				next_display_update += 1.0;
+
+				while (next_display_update < current_time)
+				{
+					next_display_update += 1.0;
+				}
+			}
+
+			next_loop_tick += UI_LOOP_PERIOD;
+			sleep_until(next_loop_tick);
+
+			while (next_loop_tick < now())
+			{
+				next_loop_tick += UI_LOOP_PERIOD;
+			}
 		}
 
-		// Stopped
 		printf("Stopping...\n");
-		graphics_close();
-		pthread_cancel(dropper_thread);
-		pthread_join(dropper_thread, NULL);
-		ao();
-		console_clear();
-		msleep(3000);
 
-		// Wait to restart
+		dropper_should_stop = 1;
+		pthread_join(dropper_thread, NULL);
+
+		set_all_servos(CATCH);
+		motors_off();
+
+		graphics_close();
+		console_clear();
+
+		sleep_until(now() + 3.0);
+
 		printf("Press B button to restart or C to exit\n");
 		wait_b();
-		msleep(1000);
+
 		console_clear();
 	}
+}
+
+int main(void)
+{
+	printf("Starting tournament UI . . .\n");
+
+	enable_servos();
+
+	run();
+
+	set_all_servos(CATCH);
+	motors_off();
+	disable_servos();
+
+	return 0;
 }
